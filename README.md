@@ -52,7 +52,7 @@ A versatile Telegram bot that runs on a Raspberry Pi, allowing you to control yo
    - Use the `/newbot` command to create your bot and get the API token.
 
 4. **Configure the Bot**:
-   - Copy the `config_sample.py` file to `config.py` and add your bot token and other configuration details.
+   - Copy the `config.py` and add your bot token and other configuration details.
 
 5. **Run the Bot**:
     ```bash
