@@ -119,9 +119,9 @@ Here are some example commands you can use:
   /cpu
   ```
 
-- **Check memory usage**:
+- **Check ram usage**:
    ```text
-  /memory
+  /ram
   ```
 
 - **Check disk space**:
