@@ -105,8 +105,13 @@ Here are some example commands you can use:
   ```
 
 - **Shutdown the Raspberry Pi**:
-  ```twxt
+  ```text
   /shutdown
+  ```
+  
+- **execute command remotely**:
+  ```text
+  /exec
   ```
   
 - **Check CPU usage**:
