@@ -74,3 +74,17 @@ LOGGING = {
     'level': 'INFO',
     'file': 'bot.log'
 }
+```
+
+## Usage
+
+Once the bot is up and running, you can start sending commands via Telegram. The bot will respond with the requested information or perform the specified task.
+
+### Example Commands
+
+Here are some example commands you can use:
+
+- **Check CPU usage**:
+  ```text
+  /cpu
+
