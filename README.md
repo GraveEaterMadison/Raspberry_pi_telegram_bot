@@ -2,7 +2,7 @@
 
 ![Python](https://img.shields.io/badge/Python-3.x-blue.svg)
 ![Raspberry Pi](https://img.shields.io/badge/Raspberry%20Pi-Model%20B-orange)
-![License](https://img.shields.io/github/license/GraveEaterMadison/Raspberry_pi_telegram_bot)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 A versatile Telegram bot that runs on a Raspberry Pi, allowing you to control your Pi and interact with it remotely via Telegram. This project is designed to help you automate tasks, gather system information, and manage your Raspberry Pi from anywhere.
 
