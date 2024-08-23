@@ -114,7 +114,7 @@ Here are some example commands you can use:
   /memory
   ```
 
-  - **Check disk space**:
+- **Check disk space**:
    ```text
   /disk
   ```
