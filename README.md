@@ -138,6 +138,8 @@ Here are some example commands you can use:
 ```bash
 Raspberry_pi_telegram_bot/
 │
+├── handlers
+├── utils
 ├── bot.py              # Main bot script
 ├── config.py           # Sample configuration file
 ├── requirements.txt    # Python dependencies
