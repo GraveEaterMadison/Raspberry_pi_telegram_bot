@@ -31,7 +31,7 @@ A versatile Telegram bot that runs on a Raspberry Pi, allowing you to control yo
 ### Prerequisites
 
 - A Raspberry Pi running a Debian-based OS (e.g., Raspbian).
-- Python 3.x installed.
+- Python 3.11 installed.
 - A Telegram account to create a bot.
 
 ### Steps
