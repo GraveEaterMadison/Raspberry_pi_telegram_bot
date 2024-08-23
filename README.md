@@ -1,6 +1,6 @@
 # Raspberry Pi Telegram Bot
 
-![Python](https://img.shields.io/badge/Python-3.x-blue.svg)
+![Python](https://img.shields.io/badge/Python-3.11-blue.svg)
 ![Raspberry Pi](https://img.shields.io/badge/Raspberry%20Pi-Model%20B-orange)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
