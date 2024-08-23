@@ -137,7 +137,7 @@ You can add more commands by modifying the bot.py file and defining new function
 Raspberry_pi_telegram_bot/
 │
 ├── bot.py              # Main bot script
-├── config_sample.py    # Sample configuration file
+├── config.py           # Sample configuration file
 ├── requirements.txt    # Python dependencies
 ├── README.md           # This README file
 └── LICENSE             # License file
