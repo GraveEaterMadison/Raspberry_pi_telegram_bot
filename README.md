@@ -80,6 +80,11 @@ LOGGING = {
 
 Once the bot is up and running, you can start sending commands via Telegram. The bot will respond with the requested information or perform the specified task.
 
+
+### Commands
+
+You can add more commands by modifying the bot.py file and defining new functions to handle those commands.
+
 ### Example Commands
 
 Here are some example commands you can use:
@@ -127,9 +132,6 @@ Here are some example commands you can use:
    ```text
   /gpio oFF
    ```
-### Commands
-
-You can add more commands by modifying the bot.py file and defining new functions to handle those commands.
 
 ### File Structure
 
