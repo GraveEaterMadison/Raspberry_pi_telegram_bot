@@ -84,7 +84,81 @@ Once the bot is up and running, you can start sending commands via Telegram. The
 
 Here are some example commands you can use:
 
+- **Start the bot**:
+  ```text
+  /start
+  ```
+
+- **List all available command**:
+  ```text
+  /help
+  ```
+
+- **Reboot the Raspberry Pi**:
+  ```text
+  /reboot
+  ```
+
+- **Shutdown the Raspberry Pi**:
+  ```twxt
+  /shutdown
+  ```
+  
 - **Check CPU usage**:
   ```text
   /cpu
+  ```
 
+- **Check memory usage**:
+   ```text
+  /memory
+  ```
+
+  - **Check disk space**:
+   ```text
+  /disk
+  ```
+
+- **Turn on an LED connected to GPIO pin**:
+   ```text
+  /gpio on
+   ```
+- **Turn off an LED connected to GPIO pin**:
+   ```text
+  /gpio oFF
+   ```
+### Commands
+
+You can add more commands by modifying the bot.py file and defining new functions to handle those commands.
+
+### File Structure
+
+```bash
+Raspberry_pi_telegram_bot/
+│
+├── bot.py              # Main bot script
+├── config_sample.py    # Sample configuration file
+├── requirements.txt    # Python dependencies
+├── README.md           # This README file
+└── LICENSE             # License file
+```
+
+### Contributing
+
+Contributions are welcome! Please fork this repository and submit a pull request with your improvements or bug fixes.
+
+### License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+### Acknowledgements
+
+This project was inspired by various online resources and tutorials that guide the creation of Raspberry Pi-based Telegram bots.
+
+You can add custom commands by creating new handlers in the handlers/ directory.
+
+Developed with ❤️ by [GraveEaterMadison](https://github.com/GraveEaterMadison)
+```vbnet
+
+You can copy and paste this content into your `README.md` file under the relevant sections. Let me know if you need further adjustments!
+```
