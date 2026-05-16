@@ -170,13 +170,13 @@ COMMANDS = [
     ("sysstat",     sysstat_command,     "📊 Uptime + load + CPU + RAM",        True),
     ("loadavg",     loadavg_command,     "📉 CPU load averages",                True),
 
-    # Cameras (from fork, enhanced)
+    # Cameras 
     ("cameras",     cameras_command,     "🎥 List connected cameras",           True),
 
-    # Bluetooth watches (from fork, enhanced)
+    # Bluetooth watches 
     ("watches",     watches_command,     "🔵 Ping Bluetooth watches",           True),
 
-    # Cloud integrations (from fork, async-rewritten)
+    # Cloud integrations 
     ("gigachat",    giga_check_command,  "🤖 Check GigaChat API connectivity",  True),
     ("yandex_ocr",  yandex_ocr_command,  "☁️  Check Yandex OCR IAM token",      True),
 ]
