@@ -7,7 +7,12 @@ Wants=network-online.target
 Type=simple
 User=pi
 WorkingDirectory=/home/pi/ultra_rpi_bot
-ExecStart=/usr/bin/python3 /home/pi/ultra_rpi_bot/main.py
+
+
+ExecStart=/home/pi/ultra_rpi_bot/venv/bin/python main.py
+
+EnvironmentFile=/home/pi/ultra_rpi_bot/.env
+
 Restart=always
 RestartSec=10
 StandardOutput=journal
