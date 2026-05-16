@@ -1,6 +1,5 @@
 """handlers/camera.py — Pi Camera snapshot and motion detection."""
 import asyncio
-import io
 import logging
 import os
 from datetime import datetime
@@ -38,12 +37,22 @@ async def snapshot_command(update: Update, context: CallbackContext) -> None:
             )
             await asyncio.wait_for(proc.wait(), timeout=15)
 
+        # BUG FIX: file may not exist if the capture command failed silently;
+        # check before trying to open/send it.
+        if not os.path.exists(path):
+            await msg.edit_text("❌ Camera capture produced no output file.")
+            return
+
         with open(path, "rb") as f:
             await update.message.reply_photo(
                 photo=f,
                 caption=f"📸 Snapshot @ {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
             )
-        os.unlink(path)
+        # BUG FIX: unlink can throw if the file was already removed; guard it.
+        try:
+            os.unlink(path)
+        except OSError:
+            pass
         await msg.delete()
     except asyncio.TimeoutError:
         await msg.edit_text("⏰ Camera timed out.")
@@ -56,7 +65,10 @@ async def motion_command(update: Update, context: CallbackContext) -> None:
     state = (context.args[0].lower() if context.args else "toggle")
     if state in ("on", "toggle") and not _motion_active.get(uid):
         _motion_active[uid] = True
-        await update.message.reply_text("🚨 Motion detection *ON* — you'll be notified when motion is detected.", parse_mode="Markdown")
+        await update.message.reply_text(
+            "🚨 Motion detection *ON* — you'll be notified when motion is detected.",
+            parse_mode="Markdown"
+        )
         asyncio.create_task(_motion_loop(update, context, uid))
     else:
         _motion_active[uid] = False
@@ -71,7 +83,6 @@ async def _motion_loop(update: Update, context, uid: int):
         while _motion_active.get(uid):
             if GPIO.input(PIR_PIN):
                 await context.bot.send_message(uid, "🚨 *MOTION DETECTED!*", parse_mode="Markdown")
-                # Take snapshot
                 path = f"/tmp/motion_{datetime.now().strftime('%Y%m%d_%H%M%S')}.jpg"
                 try:
                     proc = await asyncio.create_subprocess_exec(
@@ -79,14 +90,28 @@ async def _motion_loop(update: Update, context, uid: int):
                         stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.DEVNULL
                     )
                     await asyncio.wait_for(proc.wait(), timeout=10)
-                    with open(path, "rb") as f:
-                        await context.bot.send_photo(uid, photo=f, caption="📸 Motion capture")
-                    os.unlink(path)
+                    if os.path.exists(path):
+                        with open(path, "rb") as f:
+                            await context.bot.send_photo(uid, photo=f, caption="📸 Motion capture")
+                        try:
+                            os.unlink(path)
+                        except OSError:
+                            pass
                 except Exception:
                     pass
                 await asyncio.sleep(10)  # cooldown
             await asyncio.sleep(0.5)
     except ImportError:
-        await context.bot.send_message(uid, "⚠️ RPi.GPIO not available — motion detection requires real Pi hardware.")
+        await context.bot.send_message(
+            uid, "⚠️ RPi.GPIO not available — motion detection requires real Pi hardware."
+        )
     except Exception as e:
         logger.error("Motion loop error: %s", e)
+    finally:
+        # BUG FIX: always clean up GPIO on exit to avoid "already in use" warnings
+        # on the next /motion on command.
+        try:
+            import RPi.GPIO as GPIO
+            GPIO.cleanup(PIR_PIN)
+        except Exception:
+            pass
