@@ -1,16 +1,3 @@
-"""
-config.py — Ultra Pi Bot Configuration
-
-BUG FIX: Original config.py had:
-    AUTHORIZED_USERS = [user_1_id, user_2_id]
-  which throws NameError because user_1_id and user_2_id are undefined.
-  → Now loaded safely from .env file using python-dotenv.
-
-Setup:
-    cp .env.example .env
-    nano .env   # fill in your values
-"""
-
 import os
 from dotenv import load_dotenv
 
