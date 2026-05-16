@@ -82,8 +82,6 @@ async def callback_handler(update: Update, context: CallbackContext) -> None:
 
         elif action == "ip":
             import socket
-            # BUG FIX #3: Removed dead `import psutil as _p` — _p was imported
-            # but never used. psutil is already imported at function entry above.
             lines = []
             for iface, addrs in psutil.net_if_addrs().items():
                 for addr in addrs:
