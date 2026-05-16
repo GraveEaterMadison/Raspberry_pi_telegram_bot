@@ -1,0 +1,22 @@
+[Unit]
+Description=Ultra Raspberry Pi Telegram Bot
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/ultra_rpi_bot
+ExecStart=/usr/bin/python3 /home/pi/ultra_rpi_bot/main.py
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+Environment=PYTHONUNBUFFERED=1
+
+# Auto-restart on crash with exponential backoff
+StartLimitIntervalSec=120
+StartLimitBurst=5
+
+[Install]
+WantedBy=multi-user.target
