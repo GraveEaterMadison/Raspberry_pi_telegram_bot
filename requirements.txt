@@ -1,7 +1,7 @@
 # Install with: pip install -r requirements.txt
 
 # Core Telegram bot framework
-python-telegram-bot[job-queue]==21.*
+python-telegram-bot==21.*
 
 # System monitoring
 psutil>=5.9
