@@ -1,9 +1,4 @@
-"""handlers/cameras_handler.py — List connected Pi cameras.
 
-Uses libcamera / rpicam-hello on Pi OS Bookworm+ (Pi Camera Module 3, etc.)
-Falls back to v4l2-ctl for USB cameras. Shows a rich formatted list with
-camera indices and properties rather than raw dump.
-"""
 
 import asyncio
 import logging
