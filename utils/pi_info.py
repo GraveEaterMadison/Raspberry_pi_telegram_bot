@@ -1,13 +1,18 @@
+import re
 import subprocess
+
 
 def get_system_info():
     return subprocess.check_output("uname -a", shell=True).decode()
 
+
 def get_cpu_temperature():
     return subprocess.check_output("vcgencmd measure_temp", shell=True).decode().strip()
 
+
 def get_ip_addresses():
     return subprocess.check_output("hostname -I", shell=True).decode().strip()
+
 
 def get_ram_usage() -> str:
     try:
@@ -61,37 +66,63 @@ def get_disk_usage() -> str:
 def get_uptime():
     return subprocess.check_output("uptime -p", shell=True).decode()
 
+
 def get_services() -> str:
     try:
-        result = subprocess.check_output("systemctl list-units --type=service --state=running", shell=True)
+        result = subprocess.check_output(
+            "systemctl list-units --type=service --state=running", shell=True
+        )
         return result.decode('utf-8')
     except subprocess.CalledProcessError as e:
         return f"Error retrieving services: {e.output.decode('utf-8')}"
+
 
 def manage_service(action: str, service: str) -> str:
     try:
         if action not in ["start", "stop", "status", "restart"]:
             return "Invalid action. Use one of the following: start, stop, status, restart."
 
-        result = subprocess.check_output(f"sudo systemctl {action} {service}", shell=True, stderr=subprocess.STDOUT)
+        result = subprocess.check_output(
+            f"sudo systemctl {action} {service}",
+            shell=True, stderr=subprocess.STDOUT
+        )
         return result.decode('utf-8')
     except subprocess.CalledProcessError as e:
         return f"Error performing {action} on {service}: {e.output.decode('utf-8')}"
 
+
 def get_gpio_status():
     return subprocess.check_output("gpio readall", shell=True).decode()
+
 
 def get_netinfo():
     return subprocess.check_output("ifconfig", shell=True).decode()
 
-def ping_host(host):
-    return subprocess.check_output(f"ping -c 4 {host}", shell=True).decode()
 
+def ping_host(host: str) -> str:
+    # Only allow hostnames, IPv4, and IPv6 addresses — no shell metacharacters
+    if not re.match(r'^[a-zA-Z0-9.\-:]+$', host):
+        return "❌ Invalid host name."
+    try:
+        # Use list form — no shell=True, so no injection possible
+        result = subprocess.check_output(
+            ["ping", "-c", "4", "-W", "3", host],
+            stderr=subprocess.STDOUT,
+            timeout=15,
+        )
+        return result.decode()
+    except subprocess.CalledProcessError as e:
+        # ping exits non-zero for unreachable hosts — return output not exception
+        return e.output.decode() or f"Host '{host}' is unreachable."
+    except subprocess.TimeoutExpired:
+        return f"❌ Ping to '{host}' timed out."
 
 
 def get_running_services() -> str:
     try:
-        result = subprocess.check_output("systemctl list-units --type=service --state=running", shell=True)
+        result = subprocess.check_output(
+            "systemctl list-units --type=service --state=running", shell=True
+        )
         lines = result.decode('utf-8').splitlines()
         if len(lines) < 2:
             return "No running services found or command failed."
@@ -99,12 +130,11 @@ def get_running_services() -> str:
         # Extract headers and rows
         headers = lines[0].split()
         rows = [line.split(None, len(headers)-1) for line in lines[1:] if len(line.split()) >= len(headers)]
-        
+
         # Format header
         output = f"{'No.':<5} {'Unit':<30} {'Load':<10} {'Active':<15} {'Sub':<15} {'Description':<50}\n"
         output += '-' * 120 + '\n'
-        
-        
+
         for idx, row in enumerate(rows, 1):
             unit = row[0] if len(row) > 0 else "N/A"
             load = row[1] if len(row) > 1 else "N/A"
@@ -112,20 +142,20 @@ def get_running_services() -> str:
             sub = row[3] if len(row) > 3 else "N/A"
             description = ' '.join(row[4:]) if len(row) > 4 else "N/A"
             output += f"{idx:<5} {unit:<30} {load:<10} {active:<15} {sub:<15} {description:<50}\n\n\n"
-        
+
         return output
     except subprocess.CalledProcessError as e:
         return f"Error retrieving running services: {e.output.decode('utf-8')}"
 
 
-
 def get_all_services() -> str:
     try:
-        result = subprocess.check_output("systemctl list-unit-files --type=service", shell=True)
+        result = subprocess.check_output(
+            "systemctl list-unit-files --type=service", shell=True
+        )
         services = result.decode('utf-8').splitlines()
         services = [service for service in services if service.strip() != ""]
         formatted_services = "\n\n".join([f"{i+1}. {services[i]}" for i in range(len(services))])
         return formatted_services
     except subprocess.CalledProcessError as e:
         return f"Error retrieving all services: {e.output.decode('utf-8')}"
-
