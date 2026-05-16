@@ -4,7 +4,7 @@ import asyncio
 import time
 import logging
 from collections import deque
-from typing import Optional
+from typing import Optional, Callable
 
 import psutil
 
@@ -19,7 +19,9 @@ class MetricsCollector:
         self.ram_history:  deque[tuple[float, float]] = deque(maxlen=METRICS_HISTORY_SIZE)
         self.temp_history: deque[tuple[float, float]] = deque(maxlen=METRICS_HISTORY_SIZE)
         self._alerts: list[dict] = []   # {metric, op, threshold, user_id}
-        self._notifier = None            # set by monitoring handler
+        self._notifier: Optional[Callable] = None
+        # BUG FIX: track which alerts have fired to avoid spamming every interval
+        self._fired_alerts: set[int] = set()
 
     def init(self):
         logger.info("MetricsCollector initialized (interval=%ds, history=%d)",
@@ -33,12 +35,16 @@ class MetricsCollector:
         self._alerts.append({
             "user_id": user_id, "metric": metric, "op": op, "threshold": threshold
         })
+        # reset fired state so new alert can fire immediately
+        self._fired_alerts.discard(id(self._alerts[-1]))
 
     def list_alerts(self, user_id: int) -> list[dict]:
         return [a for a in self._alerts if a["user_id"] == user_id]
 
     def clear_alerts(self, user_id: int):
         self._alerts = [a for a in self._alerts if a["user_id"] != user_id]
+        # clean up fired set — rebuild from surviving alerts
+        self._fired_alerts = {id(a) for a in self._alerts if id(a) in self._fired_alerts}
 
     def get_cpu(self) -> float:
         return psutil.cpu_percent(interval=0.1)
@@ -91,11 +97,19 @@ class MetricsCollector:
                ">=": lambda a, b: a >= b, "<=": lambda a, b: a <= b}
 
         for alert in self._alerts:
+            alert_id = id(alert)
             val = values.get(alert["metric"])
             if val is None:
                 continue
             op_fn = ops.get(alert["op"])
-            if op_fn and op_fn(val, alert["threshold"]):
+            if not op_fn:
+                continue
+
+            condition_true = op_fn(val, alert["threshold"])
+
+            # BUG FIX: only fire once per trigger; reset when condition clears
+            if condition_true and alert_id not in self._fired_alerts:
+                self._fired_alerts.add(alert_id)
                 try:
                     await self._notifier(
                         alert["user_id"],
@@ -104,3 +118,6 @@ class MetricsCollector:
                     )
                 except Exception as e:
                     logger.error("Alert notification failed: %s", e)
+            elif not condition_true:
+                # reset so it can fire again next time the threshold is crossed
+                self._fired_alerts.discard(alert_id)
