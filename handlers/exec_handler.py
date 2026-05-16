@@ -42,6 +42,7 @@ async def exec_command(update: Update, context: CallbackContext) -> None:
 
     msg = await update.message.reply_text(f"💻 Running:\n```\n{cmd}\n```",
                                            parse_mode="Markdown")
+    proc = None
     try:
         proc = await asyncio.create_subprocess_shell(
             cmd,
@@ -65,7 +66,12 @@ async def exec_command(update: Update, context: CallbackContext) -> None:
         await msg.edit_text(result, parse_mode="Markdown")
 
     except asyncio.TimeoutError:
-        proc.kill()
+        if proc is not None:
+            try:
+                proc.kill()
+                await proc.communicate()
+            except Exception:
+                pass
         await msg.edit_text(f"⏰ Command timed out after 30 seconds.\n`{cmd}`",
                             parse_mode="Markdown")
     except Exception as e:
