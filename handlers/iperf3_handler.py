@@ -1,13 +1,4 @@
-"""handlers/iperf3_handler.py — iperf3 speed test handler.
-
-Reads the most recent JSON result written by the background iperf3-speedtest
-systemd service, or triggers a fresh run on demand.
-
-Usage:
-  /iperf3          → show latest saved result
-  /iperf3 run      → trigger the systemd service to run a new test
-  /iperf3 history  → show last N results with a trend line
-"""
+"""handlers/iperf3_handler.py — iperf3 speed test handler."""
 
 import asyncio
 import glob
