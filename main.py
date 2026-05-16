@@ -2,7 +2,10 @@ import logging
 import asyncio
 import signal
 import sys
+import os
 from functools import partial
+
+os.makedirs("data", exist_ok=True)
 
 from telegram import Update, BotCommand
 from telegram.ext import (
@@ -196,9 +199,6 @@ async def error_handler(update: object, context: CallbackContext) -> None:
 
 
 def main() -> None:
-    import os
-    os.makedirs("data", exist_ok=True)
-
     audit.init()
     metrics.init()
 
@@ -213,17 +213,16 @@ def main() -> None:
         .build()
     )
 
-    # Register all commands — BUG FIX: use partial() not lambdas to avoid closure issues
+    # Register all commands
     for cmd, handler_fn, _desc, protected in COMMANDS:
         if protected:
             wrapped = auth(handler_fn)
         else:
             wrapped = handler_fn
         application.add_handler(CommandHandler(cmd, wrapped))
-
-    # File upload handler
+        
     application.add_handler(
-        MessageHandler(filters.Document.ALL & filters.REPLY, auth(upload_handler))
+        MessageHandler(filters.Document.ALL, auth(upload_handler))
     )
 
     # Inline keyboard callback handler
