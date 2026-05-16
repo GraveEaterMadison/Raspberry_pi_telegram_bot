@@ -4,22 +4,9 @@ import logging
 import asyncio
 from telegram import Update
 from telegram.ext import CallbackContext
+from config import GPIO_MODE
 
 logger = logging.getLogger(__name__)
-
-
-def _get_gpio():
-    """Try to import RPi.GPIO or gpiozero, fall back to simulation."""
-    try:
-        import RPi.GPIO as GPIO
-        return GPIO, "RPi.GPIO"
-    except ImportError:
-        pass
-    try:
-        from gpiozero import LED, PWMOutputDevice
-        return None, "gpiozero"
-    except ImportError:
-        return None, "simulation"
 
 
 async def gpio_command(update: Update, context: CallbackContext) -> None:
@@ -32,7 +19,7 @@ async def gpio_command(update: Update, context: CallbackContext) -> None:
         return
 
     try:
-        pin = int(context.args[0])
+        pin   = int(context.args[0])
         state = context.args[1].lower()
     except ValueError:
         await update.message.reply_text("❌ Pin must be a number.")
@@ -48,7 +35,8 @@ async def gpio_command(update: Update, context: CallbackContext) -> None:
 
     try:
         import RPi.GPIO as GPIO
-        GPIO.setmode(GPIO.BCM)
+        mode = GPIO.BCM if GPIO_MODE == "BCM" else GPIO.BOARD
+        GPIO.setmode(mode)
         GPIO.setwarnings(False)
         GPIO.setup(pin, GPIO.OUT)
         GPIO.output(pin, GPIO.HIGH if state == "on" else GPIO.LOW)
@@ -77,7 +65,7 @@ async def pwm_command(update: Update, context: CallbackContext) -> None:
         return
 
     try:
-        pin = int(context.args[0])
+        pin  = int(context.args[0])
         duty = float(context.args[1])
     except ValueError:
         await update.message.reply_text("❌ Invalid pin or duty cycle.")
@@ -89,7 +77,8 @@ async def pwm_command(update: Update, context: CallbackContext) -> None:
 
     try:
         import RPi.GPIO as GPIO
-        GPIO.setmode(GPIO.BCM)
+        mode = GPIO.BCM if GPIO_MODE == "BCM" else GPIO.BOARD
+        GPIO.setmode(mode)
         GPIO.setwarnings(False)
         GPIO.setup(pin, GPIO.OUT)
         pwm = GPIO.PWM(pin, 1000)  # 1 kHz
@@ -102,6 +91,8 @@ async def pwm_command(update: Update, context: CallbackContext) -> None:
         # Keep PWM running for 5s then stop (stateless bot limitation)
         await asyncio.sleep(5)
         pwm.stop()
+        # BUG FIX: original never called GPIO.cleanup(), leaving the pin locked.
+        GPIO.cleanup(pin)
     except ImportError:
         await update.message.reply_text(
             f"⚠️ *Simulation* — PWM pin `{pin}` at `{duty:.1f}%`",
@@ -136,13 +127,16 @@ async def servo_command(update: Update, context: CallbackContext) -> None:
 
     try:
         import RPi.GPIO as GPIO
-        GPIO.setmode(GPIO.BCM)
+        mode = GPIO.BCM if GPIO_MODE == "BCM" else GPIO.BOARD
+        GPIO.setmode(mode)
         GPIO.setwarnings(False)
         GPIO.setup(pin, GPIO.OUT)
         pwm = GPIO.PWM(pin, 50)  # 50 Hz for servo
         pwm.start(duty)
         await asyncio.sleep(0.5)
         pwm.stop()
+        # BUG FIX: cleanup GPIO after servo use
+        GPIO.cleanup(pin)
         await update.message.reply_text(
             f"🦾 Servo on pin `{pin}` moved to `{angle:.0f}°`",
             parse_mode="Markdown",
@@ -167,13 +161,18 @@ async def i2c_command(update: Update, context: CallbackContext) -> None:
         stdout, stderr = await proc.communicate()
         output = stdout.decode() or stderr.decode()
 
-        # Count detected devices
-        devices = [cell for cell in output.split() if cell not in ("--", "UU")
-                   and len(cell) == 2 and all(c in "0123456789abcdefABCDEF" for c in cell)]
+        # Count detected devices (hex addresses only, skip header tokens)
+        devices = [
+            cell for cell in output.split()
+            if cell not in ("--", "UU")
+            and len(cell) == 2
+            and all(c in "0123456789abcdefABCDEF" for c in cell)
+        ]
 
         await msg.edit_text(
             f"🔎 *I2C Bus Scan*\n\n"
-            f"Found `{len(devices)}` device(s){': ' + ', '.join('0x'+d for d in devices) if devices else ''}\n\n"
+            f"Found `{len(devices)}` device(s)"
+            + (": " + ", ".join("0x" + d for d in devices) if devices else "") + "\n\n"
             f"```\n{output}\n```",
             parse_mode="Markdown",
         )
