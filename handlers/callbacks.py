@@ -82,8 +82,9 @@ async def callback_handler(update: Update, context: CallbackContext) -> None:
 
         elif action == "ip":
             import socket
+            # BUG FIX #3: Removed dead `import psutil as _p` — _p was imported
+            # but never used. psutil is already imported at function entry above.
             lines = []
-            import psutil as _p
             for iface, addrs in psutil.net_if_addrs().items():
                 for addr in addrs:
                     if addr.family == socket.AF_INET:
@@ -127,7 +128,6 @@ async def callback_handler(update: Update, context: CallbackContext) -> None:
             )
 
         elif action == "refresh":
-            from handlers.core import dashboard_command
             keyboard = [
                 [InlineKeyboardButton("🖥️ CPU", callback_data="dash:cpu"),
                  InlineKeyboardButton("🧠 RAM", callback_data="dash:ram"),
