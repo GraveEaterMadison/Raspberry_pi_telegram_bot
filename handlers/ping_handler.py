@@ -12,3 +12,4 @@ async def ping_command(update: Update, context: CallbackContext) -> None:
     host = args[0]
     ping_result = ping_host(host)
     await update.message.reply_text(ping_result)
+
