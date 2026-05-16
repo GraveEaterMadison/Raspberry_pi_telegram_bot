@@ -44,16 +44,13 @@ async def _ask_anthropic(question: str) -> str:
                 "content-type": "application/json",
             },
             json={
-                # BUG FIX: updated to a current model; claude-3-haiku-20240307
-                # is available but claude-haiku-4-5 is the latest Haiku.
                 "model": "claude-haiku-4-5-20251001",
                 "max_tokens": 1024,
                 "messages": [{"role": "user", "content": question}],
             },
             timeout=aiohttp.ClientTimeout(total=30),
         )
-        # BUG FIX: check HTTP status before blindly indexing into data;
-        # a 4xx/5xx response returns an error dict, not a content list.
+        
         if resp.status != 200:
             error = await resp.text()
             raise RuntimeError(f"Anthropic API error {resp.status}: {error[:200]}")
@@ -73,7 +70,7 @@ async def _ask_openai(question: str) -> str:
             },
             timeout=aiohttp.ClientTimeout(total=30),
         )
-        # BUG FIX: same HTTP status check for OpenAI
+        
         if resp.status != 200:
             error = await resp.text()
             raise RuntimeError(f"OpenAI API error {resp.status}: {error[:200]}")
