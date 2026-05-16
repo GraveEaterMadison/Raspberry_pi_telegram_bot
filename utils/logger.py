@@ -26,6 +26,7 @@ class AuditLogger:
         return sqlite3.connect(DB_PATH)
 
     def log(self, user_id: int, username: str, command: str):
+        # BUG FIX: was using datetime.utcnow() which is deprecated in Python 3.12+
         ts = datetime.now(timezone.utc).isoformat(sep=" ", timespec="seconds")
         try:
             with self._conn() as conn:

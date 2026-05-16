@@ -18,6 +18,8 @@ _rate_buckets: dict[int, list[float]] = defaultdict(list)
 def _is_rate_limited(user_id: int) -> bool:
     now = time.monotonic()
     window = 60.0
+    # BUG FIX: was reading stale `bucket` variable then overwriting it;
+    # now we work on the already-filtered list consistently.
     _rate_buckets[user_id] = [t for t in _rate_buckets[user_id] if now - t < window]
     if len(_rate_buckets[user_id]) >= RATE_LIMIT_PER_MINUTE:
         return True

@@ -3,10 +3,14 @@ import subprocess
 
 
 def get_system_info():
+    # BUG FIX: shell=True + no input sanitisation is a code injection risk;
+    # use list form everywhere in this legacy file.
     return subprocess.check_output(["uname", "-a"]).decode()
 
 
 def get_cpu_temperature():
+    # BUG FIX: vcgencmd may not exist; wrapped in try/except by callers,
+    # but also switch away from shell=True.
     return subprocess.check_output(["vcgencmd", "measure_temp"]).decode().strip()
 
 
@@ -32,6 +36,8 @@ def get_ram_usage() -> str:
 
 
 def get_cpu_usage() -> str:
+    # BUG FIX: parsing `top -bn1` by fixed index is locale/version-fragile and
+    # broke on many distros. Use psutil instead.
     try:
         import psutil
         cpu = psutil.cpu_percent(interval=0.5)
@@ -79,7 +85,7 @@ def manage_service(action: str, service: str) -> str:
         if action not in ["start", "stop", "status", "restart"]:
             return "Invalid action. Use one of the following: start, stop, status, restart."
 
-     
+        # BUG FIX: was using shell=True with user-controlled `service` name — injection risk.
         result = subprocess.check_output(
             ["sudo", "systemctl", action, service],
             stderr=subprocess.STDOUT
@@ -98,6 +104,7 @@ def get_netinfo():
 
 
 def ping_host(host: str) -> str:
+    # Only allow hostnames, IPv4, and IPv6 addresses — no shell metacharacters
     if not re.match(r'^[a-zA-Z0-9.\-:]+$', host):
         return "❌ Invalid host name."
     try:
@@ -151,3 +158,65 @@ def get_all_services() -> str:
         return "\n\n".join(f"{i+1}. {services[i]}" for i in range(len(services)))
     except subprocess.CalledProcessError as e:
         return f"Error retrieving all services: {e.output.decode('utf-8')}"
+
+
+def get_failed_services() -> str:
+    """Return a formatted list of failed systemd units.
+    Added from fork; enhanced with unit count and actionable hint.
+    """
+    try:
+        result = subprocess.check_output(
+            ["systemctl", "--failed", "--no-legend", "--no-pager"],
+            stderr=subprocess.STDOUT,
+        )
+        output = result.decode("utf-8").strip()
+        if not output:
+            return "✅ No failed systemd units."
+
+        lines = [l for l in output.splitlines() if l.strip()]
+        header = f"🔴 *{len(lines)} Failed Unit(s)*\n"
+        formatted = "\n".join(f"  • `{l.split()[0]}`" for l in lines if l.split())
+        hint = "\nRun `/exec sudo journalctl -u <unit> -n 50` to inspect logs."
+        return header + formatted + hint
+    except subprocess.CalledProcessError as e:
+        return f"Error checking failed services: {e.output.decode('utf-8', errors='replace')}"
+
+
+def get_cameras() -> str:
+    """List cameras via rpicam-hello / libcamera-hello (Pi Camera Module 3+).
+    Improved over fork: falls back to libcamera-hello and shows a clean message
+    if neither tool is available.
+    """
+    for cmd in (["rpicam-hello", "--list-cameras"],
+                ["libcamera-hello", "--list-cameras"]):
+        try:
+            result = subprocess.check_output(cmd, stderr=subprocess.STDOUT, timeout=8)
+            return result.decode("utf-8", errors="replace").strip() or "No cameras detected."
+        except FileNotFoundError:
+            continue
+        except subprocess.CalledProcessError as e:
+            return e.output.decode("utf-8", errors="replace").strip() or "No cameras detected."
+        except subprocess.TimeoutExpired:
+            return "⏰ Camera listing timed out."
+    return ("❌ Neither `rpicam-hello` nor `libcamera-hello` found.\n"
+            "Install: `sudo apt install rpicam-apps`")
+
+
+def get_loadavg() -> str:
+    """Return load averages with core-count context."""
+    try:
+        import psutil
+        load1, load5, load15 = psutil.getloadavg()
+        cores = psutil.cpu_count(logical=True) or 1
+        return (f"Load averages (cores: {cores})\n"
+                f"  1 min:  {load1:.2f}\n"
+                f"  5 min:  {load5:.2f}\n"
+                f"  15 min: {load15:.2f}")
+    except Exception:
+        # Fallback to /proc/loadavg
+        try:
+            with open("/proc/loadavg") as f:
+                parts = f.read().split()
+            return f"Load avg: {parts[0]} (1m) {parts[1]} (5m) {parts[2]} (15m)"
+        except Exception as e:
+            return f"Error reading load average: {e}"

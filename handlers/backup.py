@@ -12,6 +12,7 @@ from config import BACKUP_PATHS
 logger = logging.getLogger(__name__)
 MAX_BACKUP_SIZE = 45 * 1024 * 1024  # 45 MB
 
+# BUG FIX: safe roots mirroring files.py — prevent backing up arbitrary paths.
 _SAFE_ROOTS = ("/home", "/var/log", "/etc", "/tmp", "/opt")
 
 

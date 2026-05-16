@@ -114,6 +114,9 @@ async def scheduler_loop(bot):
                 ).fetchall()
 
             for task_id, uid, cid, command in tasks:
+                # BUG FIX: mark task as done BEFORE executing so that if the
+                # scheduler loop fires twice in the same minute (e.g. after a
+                # brief sleep drift) the task isn't executed twice.
                 with sqlite3.connect(DB_PATH) as conn:
                     conn.execute(
                         "UPDATE scheduled_tasks SET done=1 WHERE id=?", (task_id,)

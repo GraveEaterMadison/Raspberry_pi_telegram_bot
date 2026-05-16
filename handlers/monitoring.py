@@ -176,7 +176,9 @@ async def metrics_command(update: Update, context: CallbackContext) -> None:
              "`  Time    CPU    RAM    Temp`",
              "`─────────────────────────────`"]
 
-   
+    # BUG FIX: original code assumed cpu_last, ram_last, temp_last are all the same
+    # length and used the same index, but they can differ (e.g. temp returns None
+    # on some ticks and is not appended). Use index-safe lookup.
     for i in range(len(cpu_last)):
         ts  = datetime.fromtimestamp(cpu_last[i][0]).strftime("%H:%M:%S")
         cpu = f"{cpu_last[i][1]:5.1f}%"

@@ -52,6 +52,15 @@ from handlers.sensors import sensors_command
 from handlers.process import ps_command, kill_command
 from handlers.callbacks import callback_handler
 
+# ── New handlers (from fork, enhanced) ───────────────────────────────────────
+from handlers.iperf3_handler import iperf3_command
+from handlers.speedtest_handler import cloudflare_speedtest_command
+from handlers.sysstat_handler import sysstat_command, loadavg_command
+from handlers.cameras_handler import cameras_command
+from handlers.watches_handler import watches_command
+from handlers.giga_handler import giga_check_command
+from handlers.yandex_ocr_handler import yandex_ocr_command
+
 # ── Logging ──────────────────────────────────────────────────────────────────
 logging.basicConfig(
     level=getattr(logging, LOG_LEVEL, logging.INFO),
@@ -152,6 +161,24 @@ COMMANDS = [
     # Processes
     ("ps",          ps_command,          "🔎 List running processes",           True),
     ("kill",        kill_command,        "💀 Kill a process by PID",            True),
+
+    # Network speed (from fork, enhanced)
+    ("iperf3",      iperf3_command,               "📡 iperf3 speed test results/run",    True),
+    ("cfspeed",     cloudflare_speedtest_command,  "⚡ Cloudflare speed test",            True),
+
+    # System stats (from fork, enhanced)
+    ("sysstat",     sysstat_command,     "📊 Uptime + load + CPU + RAM",        True),
+    ("loadavg",     loadavg_command,     "📉 CPU load averages",                True),
+
+    # Cameras (from fork, enhanced)
+    ("cameras",     cameras_command,     "🎥 List connected cameras",           True),
+
+    # Bluetooth watches (from fork, enhanced)
+    ("watches",     watches_command,     "🔵 Ping Bluetooth watches",           True),
+
+    # Cloud integrations (from fork, async-rewritten)
+    ("gigachat",    giga_check_command,  "🤖 Check GigaChat API connectivity",  True),
+    ("yandex_ocr",  yandex_ocr_command,  "☁️  Check Yandex OCR IAM token",      True),
 ]
 
 

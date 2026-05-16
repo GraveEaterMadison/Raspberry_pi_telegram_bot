@@ -66,6 +66,8 @@ async def exec_command(update: Update, context: CallbackContext) -> None:
         await msg.edit_text(result, parse_mode="Markdown")
 
     except asyncio.TimeoutError:
+        # BUG FIX: original killed process but didn't await it, leaving a zombie;
+        # also proc could be None if create_subprocess_shell itself timed out.
         if proc is not None:
             try:
                 proc.kill()
