@@ -1,3 +1,4 @@
+"""handlers/backup.py — Backup files as tar.gz and send to Telegram."""
 import asyncio
 import logging
 import os
@@ -11,11 +12,29 @@ from config import BACKUP_PATHS
 logger = logging.getLogger(__name__)
 MAX_BACKUP_SIZE = 45 * 1024 * 1024  # 45 MB
 
+_SAFE_ROOTS = ("/home", "/var/log", "/etc", "/tmp", "/opt")
+
+
+def _is_safe_path(path: str) -> bool:
+    resolved = os.path.realpath(path)
+    return any(resolved.startswith(r) for r in _SAFE_ROOTS)
+
 
 async def backup_command(update: Update, context: CallbackContext) -> None:
     paths = list(context.args) if context.args else BACKUP_PATHS
-    # Validate paths (no absolute path traversal out of safe areas)
-    valid = [p for p in paths if os.path.exists(p)]
+
+    # BUG FIX: original only checked existence, not path safety.
+    valid = [p for p in paths if os.path.exists(p) and _is_safe_path(p)]
+    unsafe = [p for p in paths if os.path.exists(p) and not _is_safe_path(p)]
+
+    if unsafe:
+        await update.message.reply_text(
+            f"🚫 Access denied for path(s): `{', '.join(unsafe)}`\n"
+            f"Allowed roots: `{', '.join(_SAFE_ROOTS)}`",
+            parse_mode="Markdown",
+        )
+        return
+
     if not valid:
         await update.message.reply_text(
             f"❌ None of the specified paths exist: `{', '.join(paths)}`\n"
@@ -24,10 +43,13 @@ async def backup_command(update: Update, context: CallbackContext) -> None:
         )
         return
 
-    msg = await update.message.reply_text(f"💾 Creating backup of: `{', '.join(valid)}`...",
-                                           parse_mode="Markdown")
-    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-    tmp = tempfile.NamedTemporaryFile(suffix=".tar.gz", prefix=f"pi_backup_{ts}_", delete=False)
+    msg = await update.message.reply_text(
+        f"💾 Creating backup of: `{', '.join(valid)}`...", parse_mode="Markdown"
+    )
+    ts  = datetime.now().strftime("%Y%m%d_%H%M%S")
+    tmp = tempfile.NamedTemporaryFile(
+        suffix=".tar.gz", prefix=f"pi_backup_{ts}_", delete=False
+    )
     tmp.close()
 
     try:
