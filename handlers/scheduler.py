@@ -36,6 +36,12 @@ async def schedule_command(update: Update, context: CallbackContext) -> None:
         await update.message.reply_text("❌ Time must be in HH:MM format (24h).")
         return
 
+    # BUG FIX: validate HH and MM are in valid ranges
+    hh, mm = int(time_str[:2]), int(time_str[3:])
+    if not (0 <= hh <= 23 and 0 <= mm <= 59):
+        await update.message.reply_text("❌ Invalid time — hours must be 00-23, minutes 00-59.")
+        return
+
     uid = update.effective_user.id
     cid = update.effective_chat.id
 
@@ -64,8 +70,10 @@ async def cron_command(update: Update, context: CallbackContext) -> None:
                 (uid,)
             ).fetchall()
         if not rows:
-            await update.message.reply_text("🗓️ No scheduled tasks. Use `/schedule HH:MM /command`.",
-                                             parse_mode="Markdown")
+            await update.message.reply_text(
+                "🗓️ No scheduled tasks. Use `/schedule HH:MM /command`.",
+                parse_mode="Markdown"
+            )
             return
         lines = ["🗓️ *Scheduled Tasks*\n"]
         for row_id, run_at, cmd in rows:
@@ -88,7 +96,9 @@ async def cron_command(update: Update, context: CallbackContext) -> None:
             await update.message.reply_text(f"❌ Task #{task_id} not found.")
 
     else:
-        await update.message.reply_text("Unknown subcommand. Use `list` or `del`.", parse_mode="Markdown")
+        await update.message.reply_text(
+            "Unknown subcommand. Use `list` or `del`.", parse_mode="Markdown"
+        )
 
 
 async def scheduler_loop(bot):
@@ -104,19 +114,34 @@ async def scheduler_loop(bot):
                 ).fetchall()
 
             for task_id, uid, cid, command in tasks:
+                with sqlite3.connect(DB_PATH) as conn:
+                    conn.execute(
+                        "UPDATE scheduled_tasks SET done=1 WHERE id=?", (task_id,)
+                    )
                 try:
                     await bot.send_message(
                         cid,
                         f"⏰ *Scheduled task running:*\n`{command}`",
                         parse_mode="Markdown",
                     )
-                    # Execute the command as a shell process
                     proc = await asyncio.create_subprocess_shell(
                         command,
                         stdout=asyncio.subprocess.PIPE,
                         stderr=asyncio.subprocess.STDOUT,
                     )
-                    stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=30)
+                    try:
+                        stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=30)
+                    except asyncio.TimeoutError:
+                        proc.kill()
+                        await proc.communicate()
+                        await bot.send_message(
+                            cid,
+                            f"⏰ Scheduled task timed out:\n`{command}`",
+                            parse_mode="Markdown",
+                        )
+                        logger.warning("Scheduled task #%d timed out: %s", task_id, command)
+                        continue
+
                     output = stdout.decode(errors="replace").strip()[-2000:]
                     await bot.send_message(
                         cid,
@@ -124,9 +149,6 @@ async def scheduler_loop(bot):
                         parse_mode="Markdown",
                     )
                     logger.info("Scheduler ran task #%d: %s (exit %d)", task_id, command, proc.returncode)
-                except asyncio.TimeoutError:
-                    await bot.send_message(cid, f"⏰ Scheduled task timed out:\n`{command}`",
-                                           parse_mode="Markdown")
                 except Exception as e:
                     logger.error("Scheduled task #%d failed: %s", task_id, e)
                     await bot.send_message(cid, f"❌ Scheduled task failed:\n`{e}`",
