@@ -1,6 +1,49 @@
-python-telegram-bot==13.7
-requests==2.26.0
-python-dotenv==0.19.0
-schedule==1.1.0
-RPi.GPIO==0.7.1
-Pillow==8.3.1
+# Install with: pip install -r requirements.txt
+
+# Core Telegram bot framework
+python-telegram-bot[job-queue]==21.*
+
+# System monitoring
+psutil>=5.9
+
+# Environment variable management
+python-dotenv>=1.0
+
+# HTTP client (for AI, weather, speedtest APIs)
+aiohttp>=3.9
+
+# Graphs & charts
+matplotlib>=3.8
+
+# ── Optional hardware libraries (uncomment as needed) ──────────────────────
+
+# GPIO control (Raspberry Pi only)
+# RPi.GPIO>=0.7
+
+# Newer GPIO library
+# gpiozero>=2.0
+
+# Camera (Pi 4 and newer)
+# picamera2>=0.3
+
+# DHT sensors (DHT11, DHT22)
+# adafruit-circuitpython-dht>=3.7
+# adafruit-blinka
+
+# BMP280 pressure/temperature sensor
+# bmp280>=0.0.3
+# smbus2>=0.4
+
+# I2C tools (install via apt, not pip):
+# sudo apt install i2c-tools python3-smbus
+
+# Internet speed test
+# speedtest-cli>=2.1
+
+# OpenCV (alternative camera backend)
+# opencv-python>=4.8
+
+# ── Dev / testing ──────────────────────────────────────────────────────────
+# pytest>=8.0
+# pytest-asyncio>=0.23
+
