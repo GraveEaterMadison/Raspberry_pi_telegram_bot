@@ -12,7 +12,7 @@ from config import BACKUP_PATHS
 logger = logging.getLogger(__name__)
 MAX_BACKUP_SIZE = 45 * 1024 * 1024  # 45 MB
 
-# BUG FIX: safe roots mirroring files.py — prevent backing up arbitrary paths.
+
 _SAFE_ROOTS = ("/home", "/var/log", "/etc", "/tmp", "/opt")
 
 
@@ -24,7 +24,7 @@ def _is_safe_path(path: str) -> bool:
 async def backup_command(update: Update, context: CallbackContext) -> None:
     paths = list(context.args) if context.args else BACKUP_PATHS
 
-    # BUG FIX: original only checked existence, not path safety.
+   
     valid = [p for p in paths if os.path.exists(p) and _is_safe_path(p)]
     unsafe = [p for p in paths if os.path.exists(p) and not _is_safe_path(p)]
 
