@@ -2,7 +2,7 @@
 
 import sqlite3
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from config import DB_PATH
 
 logger = logging.getLogger(__name__)
@@ -26,7 +26,7 @@ class AuditLogger:
         return sqlite3.connect(DB_PATH)
 
     def log(self, user_id: int, username: str, command: str):
-        ts = datetime.utcnow().isoformat(sep=" ", timespec="seconds")
+        ts = datetime.now(timezone.utc).isoformat(sep=" ", timespec="seconds")
         try:
             with self._conn() as conn:
                 conn.execute(
