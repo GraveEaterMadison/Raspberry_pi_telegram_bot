@@ -1,3 +1,4 @@
+"""handlers/ai_handler.py — AI assistant via Anthropic or OpenAI."""
 import logging
 import aiohttp
 from telegram import Update
@@ -26,7 +27,6 @@ async def ai_command(update: Update, context: CallbackContext) -> None:
                 "⚠️ No AI API key configured.\n"
                 "Set `ANTHROPIC_API_KEY` or `OPENAI_API_KEY` in your `.env` file."
             )
-        # Truncate to Telegram limit
         if len(answer) > 3800:
             answer = answer[:3800] + "\n\n_[truncated]_"
         await msg.edit_text(f"🤖 *AI Response*\n\n{answer}", parse_mode="Markdown")
@@ -44,12 +44,16 @@ async def _ask_anthropic(question: str) -> str:
                 "content-type": "application/json",
             },
             json={
-                "model": "claude-3-haiku-20240307",
+                "model": "claude-haiku-4-5-20251001",
                 "max_tokens": 1024,
                 "messages": [{"role": "user", "content": question}],
             },
             timeout=aiohttp.ClientTimeout(total=30),
         )
+       
+        if resp.status != 200:
+            error = await resp.text()
+            raise RuntimeError(f"Anthropic API error {resp.status}: {error[:200]}")
         data = await resp.json()
         return data["content"][0]["text"]
 
@@ -66,5 +70,9 @@ async def _ask_openai(question: str) -> str:
             },
             timeout=aiohttp.ClientTimeout(total=30),
         )
+        # BUG FIX: same HTTP status check for OpenAI
+        if resp.status != 200:
+            error = await resp.text()
+            raise RuntimeError(f"OpenAI API error {resp.status}: {error[:200]}")
         data = await resp.json()
         return data["choices"][0]["message"]["content"]
