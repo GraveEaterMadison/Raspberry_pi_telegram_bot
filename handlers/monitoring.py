@@ -40,8 +40,8 @@ async def graph_command(update: Update, context: CallbackContext) -> None:
         return
 
     history_map = {
-        "cpu":  (_metrics.cpu_history if _metrics else [], "CPU Usage (%)", "#ff6b6b"),
-        "ram":  (_metrics.ram_history if _metrics else [], "RAM Usage (%)", "#4dabf7"),
+        "cpu":  (_metrics.cpu_history  if _metrics else [], "CPU Usage (%)",    "#ff6b6b"),
+        "ram":  (_metrics.ram_history  if _metrics else [], "RAM Usage (%)",    "#4dabf7"),
         "temp": (_metrics.temp_history if _metrics else [], "Temperature (°C)", "#f59f00"),
     }
     history, ylabel, color = history_map[metric]
@@ -71,7 +71,6 @@ async def graph_command(update: Update, context: CallbackContext) -> None:
         spine.set_edgecolor("#444")
     ax.grid(True, color="#333", linestyle="--", alpha=0.5)
 
-    # Stats annotation
     avg_val = sum(values) / len(values)
     max_val = max(values)
     min_val = min(values)
@@ -106,8 +105,10 @@ async def alert_command(update: Update, context: CallbackContext) -> None:
             return
         alerts = _metrics.list_alerts(uid)
         if not alerts:
-            await update.message.reply_text("🔔 No alerts set. Use:\n`/alert set <cpu|ram|temp> <>/< threshold>`",
-                                             parse_mode="Markdown")
+            await update.message.reply_text(
+                "🔔 No alerts set. Use:\n`/alert set <cpu|ram|temp> <>/< threshold>`",
+                parse_mode="Markdown"
+            )
         else:
             lines = ["🔔 *Your Alerts*\n"]
             for a in alerts:
@@ -152,8 +153,9 @@ async def alert_command(update: Update, context: CallbackContext) -> None:
         )
         return
 
-    await update.message.reply_text("Unknown subcommand. Use `set`, `list`, or `clear`.",
-                                     parse_mode="Markdown")
+    await update.message.reply_text(
+        "Unknown subcommand. Use `set`, `list`, or `clear`.", parse_mode="Markdown"
+    )
 
 
 async def metrics_command(update: Update, context: CallbackContext) -> None:
@@ -162,8 +164,8 @@ async def metrics_command(update: Update, context: CallbackContext) -> None:
         await update.message.reply_text("Metrics not available.")
         return
 
-    cpu_last = list(_metrics.cpu_history)[-10:]
-    ram_last = list(_metrics.ram_history)[-10:]
+    cpu_last  = list(_metrics.cpu_history)[-10:]
+    ram_last  = list(_metrics.ram_history)[-10:]
     temp_last = list(_metrics.temp_history)[-10:]
 
     if not cpu_last:
@@ -174,10 +176,11 @@ async def metrics_command(update: Update, context: CallbackContext) -> None:
              "`  Time    CPU    RAM    Temp`",
              "`─────────────────────────────`"]
 
+   
     for i in range(len(cpu_last)):
-        ts = datetime.fromtimestamp(cpu_last[i][0]).strftime("%H:%M:%S")
+        ts  = datetime.fromtimestamp(cpu_last[i][0]).strftime("%H:%M:%S")
         cpu = f"{cpu_last[i][1]:5.1f}%"
-        ram = f"{ram_last[i][1]:5.1f}%" if i < len(ram_last) else "  N/A "
+        ram = f"{ram_last[i][1]:5.1f}%" if i < len(ram_last)  else "  N/A "
         tmp = f"{temp_last[i][1]:5.1f}°" if i < len(temp_last) else "  N/A "
         lines.append(f"`{ts}  {cpu}  {ram}  {tmp}`")
 
