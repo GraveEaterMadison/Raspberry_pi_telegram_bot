@@ -16,6 +16,7 @@ A versatile Telegram bot that runs on a Raspberry Pi, allowing you to control yo
 - [Configuration](#configuration)
 - [Running as a Service](#running-as-a-service)
 - [Commands](#commands)
+- [AI & Extensibility](#ai--extensibility)
 - [File Structure](#file-structure)
 - [Security](#security)
 - [Contributing](#contributing)
@@ -35,6 +36,9 @@ A versatile Telegram bot that runs on a Raspberry Pi, allowing you to control yo
 - **Process Manager** — List top processes and kill by PID
 - **Metrics & Alerts** — Background metrics collection with plotted graphs and threshold alerts
 - **AI Assistant** — Ask questions via Anthropic Claude or OpenAI GPT
+- **Smart Chat Routing** — Just talk to the bot in plain language; Claude Haiku decides whether to chat back or run one of the commands below itself, using cheap tool-use + prompt caching to keep token costs minimal
+- **Skill Plugins** — Drop a new file in `skills/` to give the AI a brand-new capability, no other code changes needed
+- **Repo Integration** — `/integrate <github-url>` clones a repo you like, has Claude write a skill wrapper for it, and activates it once you confirm — the AI grows its own toolset over time
 - **Task Scheduler** — Schedule commands to run daily at a set time; manage cron jobs
 - **Package Manager** — Search, install, and remove APT packages
 - **Backup** — Create and send `.tar.gz` backups of Pi directories to Telegram
@@ -135,9 +139,17 @@ All configuration is done through the `.env` file. Copy `.env.example` to `.env`
 |---|---|---|---|
 | `TELEGRAM_BOT_TOKEN` | ✅ | — | Token from @BotFather |
 | `AUTHORIZED_USERS` | ✅ | — | Comma-separated Telegram user IDs, e.g. `123456789,987654321` |
-| `AI_PROVIDER` | No | `anthropic` | `anthropic` or `openai` |
-| `ANTHROPIC_API_KEY` | No | — | For `/ai` command (get at console.anthropic.com) |
-| `OPENAI_API_KEY` | No | — | For `/ai` command via OpenAI |
+| `AI_PROVIDER` | No | `anthropic` | `anthropic` or `openai` (fallback for `/ai` only) |
+| `ANTHROPIC_API_KEY` | No | — | Powers `/ai` and smart chat routing (get at console.anthropic.com) |
+| `OPENAI_API_KEY` | No | — | Fallback for `/ai` only, if no Anthropic key is set |
+| `AI_MODEL` | No | `claude-haiku-4-5-20251001` | Claude model for `/ai` and smart chat — keep the cheapest Haiku model unless you need more reasoning power |
+| `AI_MAX_TOKENS` | No | `400` | Caps Claude's reply length (tokens) per call |
+| `AI_SMART_CHAT` | No | `true` | If `true`, every plain chat message is routed through the AI, which can chat back or run a command |
+| `AI_EXCLUDED_COMMANDS` | No | _(empty)_ | Comma-separated commands to hide from the AI, e.g. `exec,kill` |
+| `VENDOR_DIR` | No | `data/vendor` | Where `/integrate` clones repositories |
+| `AI_INTEGRATION_MAX_TOKENS` | No | `2000` | Token budget for the one-off `/integrate` code-generation call |
+| `INTEGRATION_CLONE_TIMEOUT` | No | `90` | Max seconds for `/integrate` to clone a repo |
+| `INTEGRATION_INSTALL_TIMEOUT` | No | `180` | Max seconds for `/integrate` to install a confirmed repo's dependencies |
 | `OPENWEATHER_API_KEY` | No | — | For `/weather` (free key at openweathermap.org) |
 | `CAMERA_BACKEND` | No | `picamera2` | `picamera2`, `opencv`, or `dummy` |
 | `GPIO_MODE` | No | `BCM` | `BCM` or `BOARD` |
@@ -278,6 +290,8 @@ journalctl -u pibot -f
 | Command | Description |
 |---|---|
 | `/ai <question>` | Ask the AI assistant anything |
+| _(any plain message)_ | Talk to the bot naturally — Claude decides whether to reply or run a command for you, see [AI & Extensibility](#ai--extensibility) |
+| `/integrate <github-url>` | Turn a GitHub repo into a new AI skill (asks for confirmation first) |
 
 ### Scheduler
 
@@ -313,6 +327,27 @@ journalctl -u pibot -f
 
 ---
 
+## AI & Extensibility
+
+Set `ANTHROPIC_API_KEY` and every plain message you send the bot (no leading `/`) is handled by Claude Haiku — the cheapest current Claude model. It either answers directly, like a normal chat, or picks one of the bot's ~45 commands and runs it for you (e.g. "how hot is the Pi right now?" → runs `/temperature`; "turn on GPIO 18" → runs `/gpio 18 on`).
+
+**Why it stays cheap:**
+- Uses `claude-haiku-4-5-20251001` by default (configurable via `AI_MODEL`).
+- The system prompt and full tool list are marked for [prompt caching](https://docs.anthropic.com/), so they're billed at full price only once every few minutes — every message after that pays the much cheaper cached-read rate.
+- Exactly **one** Claude API call per message, always. When a command is picked, its own reply *is* the answer — there's no second round-trip to have Claude "summarize" the result.
+- `AI_MAX_TOKENS` caps every reply length.
+- Turn it off entirely with `AI_SMART_CHAT=false` and keep using `/ai <question>` only.
+
+**Safety:** every command keeps its existing behavior. `/reboot` and `/shutdown` still show their own inline "are you sure?" confirmation button no matter who (or what) triggers them, so the AI can't reboot or shut down the Pi without a human tapping confirm. If you want to keep other commands (like `/exec` or `/kill`) out of the AI's hands entirely, list them in `AI_EXCLUDED_COMMANDS`.
+
+**Adding new capabilities:** drop a new file into `skills/` — no other code changes needed. Each file defines a `SKILL` dict with a `name`, `description`, and an async `handler`. See [`skills/time_skill.py`](skills/time_skill.py) for a minimal working example, and the docstring in [`skills/__init__.py`](skills/__init__.py) for the full shape. Skills can either return a plain string (`kind: "data"`) or reply to Telegram themselves like any other command handler (`kind: "action"`).
+
+**Integrating someone else's GitHub project:** `/integrate https://github.com/owner/repo` shallow-clones the repo into `VENDOR_DIR`, sends its README/file listing/manifest to Claude, and gets back a single `skills/`-shaped Python module wrapping it. The bot then shows you a summary, the detected tool name(s), the exact dependency-install command it would run (if any), and the generated code as a downloadable file — nothing is installed or activated yet. Only after you tap **✅ Aktivieren** does it install dependencies and copy the file into `skills/`, which immediately hot-reloads the AI's tool catalogue; **❌ Verwerfen** deletes the clone instead.
+
+This intentionally always requires a human in the loop: `/integrate` is excluded from the AI's own auto-triggered tool-calling (see `ai/registry.py`), so mentioning a GitHub link in normal chat never starts this by itself — you always have to run the command yourself. Since it runs arbitrary third-party code with the bot's full privileges (shell, files, GPIO), only integrate repos you trust, and actually read the generated code before confirming.
+
+---
+
 ## File Structure
 
 ```
@@ -335,7 +370,8 @@ Raspberry_pi_telegram_bot/
 │   ├── gpio_handler.py      # /gpio, /pwm, /servo, /i2c
 │   ├── camera.py            # /snapshot, /motion
 │   ├── monitoring.py        # /graph, /alert, /metrics
-│   ├── ai_handler.py        # /ai
+│   ├── ai_handler.py        # /ai, smart chat routing
+│   ├── integrate_handler.py # /integrate
 │   ├── scheduler.py         # /schedule, /cron, background scheduler loop
 │   ├── notes.py             # /note
 │   ├── packages.py          # /pkg
@@ -345,6 +381,14 @@ Raspberry_pi_telegram_bot/
 │   ├── process.py           # /ps, /kill
 │   └── callbacks.py         # Inline keyboard callback router
 │
+├── ai/
+│   ├── registry.py          # Builds the Claude tool catalogue from COMMANDS + skills/
+│   ├── agent.py             # One Claude call per message: chat back or run a tool
+│   └── integrator.py        # /integrate: clone a repo, generate + confirm a skill wrapper
+│
+├── skills/                  # Drop-in AI capabilities — see AI & Extensibility
+│   └── time_skill.py        # Example skill
+│
 ├── utils/
 │   ├── auth.py              # Authorization middleware and rate limiter
 │   ├── logger.py            # SQLite audit logger
@@ -353,7 +397,8 @@ Raspberry_pi_telegram_bot/
 │
 └── data/                    # Created at runtime
     ├── bot.db               # SQLite database (audit log, notes, scheduler)
-    └── bot.log              # Log file
+    ├── bot.log              # Log file
+    └── vendor/              # Repos cloned by /integrate
 ```
 
 ---
@@ -366,6 +411,7 @@ Raspberry_pi_telegram_bot/
 - **File access** — `/ls`, `/cat`, `/download` only allow access under `/home`, `/var/log`, `/etc`, `/tmp`, and `/opt`.
 - **Secrets** — Keep your `.env` file private. It is gitignored by default and should never be committed.
 - **Reboot / shutdown** — Both commands require an inline confirmation button before executing.
+- **`/integrate`** — Never auto-triggered by the AI; generated code is syntax-checked and shown to you (summary + downloadable source) before anything is installed or activated, and only after you tap confirm. It still runs arbitrary third-party code with the bot's full privileges, so only integrate repositories you trust.
 
 ---
 

@@ -42,7 +42,8 @@ from handlers.files import ls_command, cat_command, download_command, upload_han
 from handlers.gpio_handler import gpio_command, pwm_command, servo_command, i2c_command
 from handlers.camera import snapshot_command, motion_command
 from handlers.monitoring import graph_command, alert_command, metrics_command
-from handlers.ai_handler import ai_command
+from handlers.ai_handler import ai_command, ai_chat_handler
+from handlers.integrate_handler import integrate_command
 from handlers.scheduler import schedule_command, cron_command
 from handlers.notes import note_command
 from handlers.packages import pkg_command
@@ -138,6 +139,7 @@ COMMANDS = [
 
     # AI
     ("ai",          ai_command,          "🤖 Ask AI a question",                True),
+    ("integrate",   integrate_command,   "🔌 Turn a GitHub repo into a new AI skill", True),
 
     # Scheduler
     ("schedule",    schedule_command,    "📅 Schedule a command",               True),
@@ -247,9 +249,20 @@ def main() -> None:
         else:
             wrapped = handler_fn
         application.add_handler(CommandHandler(cmd, wrapped))
-        
+
+    # Build the AI tool catalogue (existing commands + skills/) now that
+    # COMMANDS is final, so natural-language chat can drive the same handlers.
+    from ai.registry import build as build_ai_registry
+    build_ai_registry(COMMANDS)
+
     application.add_handler(
         MessageHandler(filters.Document.ALL, auth(upload_handler))
+    )
+
+    # Plain chat messages (no leading /) — routed through the Claude agent,
+    # which replies directly or calls one of the commands above on its own.
+    application.add_handler(
+        MessageHandler(filters.TEXT & ~filters.COMMAND, auth(ai_chat_handler))
     )
 
     # Inline keyboard callback handler

@@ -13,10 +13,39 @@ AUTHORIZED_USERS: list[int] = [
 ]
 
 # ── Optional features ─────────────────────────────────────────────────────────
-# AI backend (openai or anthropic)
+# AI backend (openai or anthropic) — used as a plain Q&A fallback for /ai
+# when ANTHROPIC_API_KEY isn't set. The intelligent chat/tool routing always
+# uses Anthropic, since only that path knows how to drive the bot's tools.
 AI_PROVIDER: str = os.getenv("AI_PROVIDER", "anthropic")  # or "openai"
 ANTHROPIC_API_KEY: str = os.getenv("ANTHROPIC_API_KEY", "")
 OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
+
+# Cheapest current Claude model — used for both /ai and the smart chat router.
+AI_MODEL: str = os.getenv("AI_MODEL", "claude-haiku-4-5-20251001")
+
+# Cap on Claude's reply length (tokens) — keeps every call cheap and fast.
+AI_MAX_TOKENS: int = int(os.getenv("AI_MAX_TOKENS", "400"))
+
+# Whether every plain chat message (no leading /) is sent to the AI, which
+# then decides to either chat back or call one of the bot's commands.
+AI_SMART_CHAT: bool = os.getenv("AI_SMART_CHAT", "true").strip().lower() in ("1", "true", "yes")
+
+# Commands to hide from the AI entirely (comma-separated command names,
+# without the leading /). They remain usable as normal slash commands.
+AI_EXCLUDED_COMMANDS: list[str] = [
+    c.strip().lstrip("/") for c in os.getenv("AI_EXCLUDED_COMMANDS", "").split(",") if c.strip()
+]
+
+# ── /integrate — turn a GitHub repo into a new AI skill ────────────────────────
+# Directory cloned repos live in (persists across restarts).
+VENDOR_DIR: str = os.getenv("VENDOR_DIR", "data/vendor")
+
+# Larger token budget for the one-off code-generation call than normal chat.
+AI_INTEGRATION_MAX_TOKENS: int = int(os.getenv("AI_INTEGRATION_MAX_TOKENS", "2000"))
+
+# Timeouts (seconds) for cloning a repo and for installing its dependencies.
+INTEGRATION_CLONE_TIMEOUT: int = int(os.getenv("INTEGRATION_CLONE_TIMEOUT", "90"))
+INTEGRATION_INSTALL_TIMEOUT: int = int(os.getenv("INTEGRATION_INSTALL_TIMEOUT", "180"))
 
 # OpenWeatherMap API key for /weather command
 OPENWEATHER_API_KEY: str = os.getenv("OPENWEATHER_API_KEY", "")

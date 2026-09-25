@@ -1,9 +1,10 @@
-"""handlers/ai_handler.py — AI assistant via Anthropic or OpenAI."""
+"""handlers/ai_handler.py — AI entry points: the explicit /ai command and
+the smart chat router that lets Claude pick a bot command on its own."""
 import logging
 import aiohttp
 from telegram import Update
 from telegram.ext import CallbackContext
-from config import AI_PROVIDER, ANTHROPIC_API_KEY, OPENAI_API_KEY
+from config import AI_SMART_CHAT, ANTHROPIC_API_KEY, OPENAI_API_KEY
 
 logger = logging.getLogger(__name__)
 
@@ -15,12 +16,15 @@ async def ai_command(update: Update, context: CallbackContext) -> None:
         return
 
     question = " ".join(context.args)
-    msg = await update.message.reply_text("🤖 Thinking...")
 
+    if ANTHROPIC_API_KEY:
+        from ai.agent import handle_message
+        await handle_message(update, context, question)
+        return
+
+    msg = await update.message.reply_text("🤖 Thinking...")
     try:
-        if AI_PROVIDER == "anthropic" and ANTHROPIC_API_KEY:
-            answer = await _ask_anthropic(question)
-        elif OPENAI_API_KEY:
+        if OPENAI_API_KEY:
             answer = await _ask_openai(question)
         else:
             answer = (
@@ -34,28 +38,16 @@ async def ai_command(update: Update, context: CallbackContext) -> None:
         await msg.edit_text(f"❌ AI request failed: `{e}`", parse_mode="Markdown")
 
 
-async def _ask_anthropic(question: str) -> str:
-    async with aiohttp.ClientSession() as session:
-        resp = await session.post(
-            "https://api.anthropic.com/v1/messages",
-            headers={
-                "x-api-key": ANTHROPIC_API_KEY,
-                "anthropic-version": "2023-06-01",
-                "content-type": "application/json",
-            },
-            json={
-                "model": "claude-haiku-4-5-20251001",
-                "max_tokens": 1024,
-                "messages": [{"role": "user", "content": question}],
-            },
-            timeout=aiohttp.ClientTimeout(total=30),
-        )
-        
-        if resp.status != 200:
-            error = await resp.text()
-            raise RuntimeError(f"Anthropic API error {resp.status}: {error[:200]}")
-        data = await resp.json()
-        return data["content"][0]["text"]
+async def ai_chat_handler(update: Update, context: CallbackContext) -> None:
+    """Routes plain chat messages (no leading /) through the Claude agent,
+    which decides whether to just reply or run one of the bot's commands."""
+    if not AI_SMART_CHAT or not ANTHROPIC_API_KEY:
+        return
+    if not update.message or not update.message.text:
+        return
+
+    from ai.agent import handle_message
+    await handle_message(update, context, update.message.text)
 
 
 async def _ask_openai(question: str) -> str:
@@ -70,7 +62,7 @@ async def _ask_openai(question: str) -> str:
             },
             timeout=aiohttp.ClientTimeout(total=30),
         )
-        
+
         if resp.status != 200:
             error = await resp.text()
             raise RuntimeError(f"OpenAI API error {resp.status}: {error[:200]}")

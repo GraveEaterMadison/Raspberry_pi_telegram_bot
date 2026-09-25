@@ -71,6 +71,8 @@ Upload a file (reply to /upload prompt) → Upload to Pi
 
 *🤖 AI Assistant*
 /ai <question> → Ask the AI anything
+Just type normally → the AI chats back or runs a command for you
+/integrate <github-url> → Turn a GitHub repo into a new AI skill (needs your confirmation)
 
 *📅 Scheduler*
 /schedule <HH:MM> <command> → Run command at time

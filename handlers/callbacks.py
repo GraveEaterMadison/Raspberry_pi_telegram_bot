@@ -1,6 +1,7 @@
 import asyncio
 import logging
 from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
+from telegram.error import BadRequest
 from telegram.ext import CallbackContext
 
 logger = logging.getLogger(__name__)
@@ -148,6 +149,21 @@ async def callback_handler(update: Update, context: CallbackContext) -> None:
                 reply_markup=InlineKeyboardMarkup(keyboard),
                 parse_mode="Markdown",
             )
+
+    # ── /integrate confirm/discard callbacks ──────────────────────────────────
+    elif prefix == "integrate":
+        from ai import integrator
+
+        sub, _, token = action.partition(":")
+        if sub == "yes":
+            await query.edit_message_text("⏳ Aktiviere Skill...", parse_mode="Markdown")
+            result = await integrator.activate(token)
+        else:
+            result = integrator.discard(token)
+        try:
+            await query.edit_message_text(result["message"], parse_mode="Markdown")
+        except BadRequest:
+            await query.edit_message_text(result["message"])
 
     # ── Power callbacks ───────────────────────────────────────────────────────
     elif prefix == "power":
